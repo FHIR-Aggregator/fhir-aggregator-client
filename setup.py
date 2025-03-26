@@ -12,13 +12,8 @@ with open('README.md', 'r') as f:
 
 setup(
     name="fhir_aggregator_client",
-<<<<<<< Updated upstream
-    version="0.1.7",
-    packages=find_packages(),
-=======
     version="0.1.8",
     packages=find_packages(exclude=['ez_setup', 'tests', 'tests.*']),
->>>>>>> Stashed changes
     install_requires=parse_requirements("requirements.txt"),
     long_description=long_description,
     long_description_content_type='text/markdown',
