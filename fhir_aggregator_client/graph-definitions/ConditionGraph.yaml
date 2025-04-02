@@ -1,4 +1,4 @@
-description: "(FHIR-Aggregator) Condition to ResearchStudy and children. fhir-query '/Condition?code:text=cholangiocarcinoma'"
+description: "(FHIR-Aggregator) Condition to ResearchStudy and children. fhir-query '/Condition?code:code=70179006'"
 id: condition-graph
 name: ConditionGraph
 resourceType: GraphDefinition
