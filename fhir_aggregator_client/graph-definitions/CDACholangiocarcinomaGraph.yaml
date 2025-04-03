@@ -1,0 +1,77 @@
+description: "(FHIR-Aggregator) Condition to ResearchStudy and children focusing on Observations [NCIT_C156418,NCIT_C156419,NCIT_C164934]. fhir-query '/Condition?code:code=70179006'"
+id: condition-graph
+name: CDACholangiocarcinomaGraph
+resourceType: GraphDefinition
+status: active
+
+# coding was annotated only in CDA
+
+link:
+
+- params: '_id={ref}'
+  sourceId: Condition
+  targetId: Patient
+  path: Condition.subject.reference
+
+- params: 'individual={ref}&_include=ResearchSubject:study'
+  sourceId: Patient
+  targetId: ResearchSubject
+  path: Patient.id
+
+- sourceId: ResearchSubject
+  targetId: ResearchStudy
+
+- params: member={ref}
+  sourceId: Patient
+  targetId: Group
+  path: Patient.id
+
+- params: subject={ref}
+  path: Patient.id
+  sourceId: Patient
+  targetId: Specimen
+
+- params: subject={ref}&code=NCIT_C156418,NCIT_C156419,NCIT_C164934&_count=1000&_total=accurate
+  path: Patient.id
+  sourceId: Patient
+  targetId: Observation
+
+- params: subject={ref}
+  path: Patient.id
+  sourceId: Patient
+  targetId: Procedure
+
+- params: specimen={ref}
+  path: Specimen.id
+  sourceId: Specimen
+  targetId: ServiceRequest
+
+- params: subject={ref}&_count=1000&_total=accurate
+  path: Patient.id
+  sourceId: Patient
+  targetId: DocumentReference
+
+- params: member={ref}&_count=1000&_total=accurate
+  sourceId: Patient
+  targetId: Group
+  path: Patient.id
+
+- params: subject={ref}&_count=1000&_total=accurate
+  path: ResearchStudy.id
+  sourceId: ResearchStudy
+  targetId: DocumentReference
+
+- params: subject={ref}&_count=1000&_total=accurate
+  path: Patient.id
+  sourceId: Patient
+  targetId: ImagingStudy
+
+- params: subject={ref}&_count=1000&_total=accurate
+  path: Patient.id
+  sourceId: Patient
+  targetId: MedicationAdministration
+
+- params: subject={ref}&_count=1000&_total=accurate
+  path: Patient.id
+  sourceId: Patient
+  targetId: Encounter
