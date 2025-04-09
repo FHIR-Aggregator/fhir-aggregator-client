@@ -551,7 +551,9 @@ class Dataframer(ResourceDB):
         subject = self.get_subject(specimen)
         study = None
         if "patient_id" in subject:
-            assert len(self.flattened_patients(fetch_study=False)) > 1, f"Length of flattened_patients is {len(self.flattened_patients())}"
+            assert (
+                len(self.flattened_patients(fetch_study=False)) > 1
+            ), f"Length of flattened_patients is {len(self.flattened_patients())}"
             _flattened_patient = next(
                 iter([_ for _ in self.flattened_patients() if _["patient_id"] == subject["patient_id"]]), None
             )
@@ -559,7 +561,7 @@ class Dataframer(ResourceDB):
                 print(f"Patient not found {subject['patient_id']} {[_['patient_id'] for _ in self.flattened_patients()]}")
             else:
                 subject = {f"patient_{k}".replace("patient_patient_", "patient_"): v for k, v in _flattened_patient.items()}
-            study = self.patient_study(subject['patient_id'])
+            study = self.patient_study(subject["patient_id"])
 
         flat_specimen.update(subject)
         if study:
