@@ -9,7 +9,6 @@ import click
 import pandas as pd
 import requests
 import yaml
-from click_default_group import DefaultGroup
 from fhir.resources.graphdefinition import GraphDefinition
 from halo import Halo
 from tabulate import tabulate
