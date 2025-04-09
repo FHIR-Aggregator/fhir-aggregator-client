@@ -162,12 +162,15 @@ def normalize_for_guppy(key: str):
     return key.translate(guppy_table)
 
 
-def traverse(resource):
+def traverse(resource) -> dict:
     """simplify a resource's fields, returned as a dict of values,
     where keys are prefixed with "resourceType_" """
 
+    if resource == {}:
+        return {}
     final_subject = {}
     simplified_subject = SimplifiedResource.build(resource=resource).simplified
+    assert "resourceType" in simplified_subject, f"resourceType not found in {simplified_subject} {resource}"
     prefix = simplified_subject["resourceType"].lower()
     for k, v in simplified_subject.items():
         if k in ["resourceType"]:
