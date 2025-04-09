@@ -4,8 +4,6 @@ from collections import defaultdict
 from functools import lru_cache
 from typing import Generator
 
-from mypyc.doc.conf import extensions
-
 from fhir_aggregator_client import ResourceDB
 
 import inflection
