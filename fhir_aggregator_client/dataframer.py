@@ -686,7 +686,7 @@ class Dataframer(ResourceDB):
         return json.loads(row[0])
 
     @staticmethod
-    def flattened_patient(patient: dict, observations_by_subject: dict, study: dict = None) -> dict:
+    def flattened_patient(patient: dict, observations_by_subject: dict, study: dict | None = None) -> dict:
         """Return the flattened Patient record with related Observations"""
         flat_patient = traverse(patient)
 
