@@ -13,7 +13,7 @@ with open('README.md', 'r') as f:
 
 setup(
     name="fhir_aggregator_client",
-    version="0.1.8",
+    version="0.1.9",
     packages=find_packages(exclude=['ez_setup', 'tests', 'tests.*']),
     install_requires=parse_requirements("requirements.txt"),
     long_description=long_description,
