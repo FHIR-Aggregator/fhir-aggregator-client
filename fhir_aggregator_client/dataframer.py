@@ -1,4 +1,5 @@
 import json
+import logging
 from collections import defaultdict
 from functools import lru_cache
 from typing import Generator
@@ -14,6 +15,8 @@ from typing import Dict, List, Optional, Tuple
 #######################
 # FHIR HELPER METHODS #
 #######################
+
+LOGGED_ALREADY = []
 
 
 def get_nested_value(d: dict, keys: list):
@@ -159,12 +162,15 @@ def normalize_for_guppy(key: str):
     return key.translate(guppy_table)
 
 
-def traverse(resource):
+def traverse(resource) -> dict:
     """simplify a resource's fields, returned as a dict of values,
     where keys are prefixed with "resourceType_" """
 
+    if resource == {}:
+        return {}
     final_subject = {}
     simplified_subject = SimplifiedResource.build(resource=resource).simplified
+    assert "resourceType" in simplified_subject, f"resourceType not found in {simplified_subject} {resource}"
     prefix = simplified_subject["resourceType"].lower()
     for k, v in simplified_subject.items():
         if k in ["resourceType"]:
@@ -544,8 +550,11 @@ class Dataframer(ResourceDB):
 
         # extract its .subject and append its fields (including id)
         subject = self.get_subject(specimen)
+        study = None
         if "patient_id" in subject:
-            assert len(self.flattened_patients()) > 1, f"Length of flattened_patients is {len(self.flattened_patients())}"
+            assert (
+                len(self.flattened_patients(fetch_study=False)) > 1
+            ), f"Length of flattened_patients is {len(self.flattened_patients())}"
             _flattened_patient = next(
                 iter([_ for _ in self.flattened_patients() if _["patient_id"] == subject["patient_id"]]), None
             )
@@ -553,7 +562,11 @@ class Dataframer(ResourceDB):
                 print(f"Patient not found {subject['patient_id']} {[_['patient_id'] for _ in self.flattened_patients()]}")
             else:
                 subject = {f"patient_{k}".replace("patient_patient_", "patient_"): v for k, v in _flattened_patient.items()}
+            study = self.patient_study(subject["patient_id"])
+
         flat_specimen.update(subject)
+        if study:
+            flat_specimen.update(traverse(study))
 
         # populate observation codes for each associated observation
         if specimen["id"] in observation_by_id:
@@ -577,7 +590,7 @@ class Dataframer(ResourceDB):
         return flat_specimen
 
     @lru_cache(maxsize=None)
-    def flattened_patients(self) -> list[dict]:
+    def flattened_patients(self, fetch_study=True) -> list[dict]:
         """
         Generator that yields flattened Patient records.
         Each flattened Patient merges in fields from:
@@ -591,11 +604,90 @@ class Dataframer(ResourceDB):
         _flattened_patients = []
         for _, _, _, resource in cursor.fetchall():
             patient = json.loads(resource)
-            _flattened_patients.append(self.flattened_patient(patient, observations_by_focus))
+            _flattened_patient = self.flattened_patient(patient, observations_by_focus)
+            if fetch_study:
+                study = self.patient_study(patient["id"])
+                _flattened_patient.update(traverse(study))
+            _flattened_patients.append(_flattened_patient)
+
         return _flattened_patients
 
+    def patient_study(self, patient_id: str) -> dict:
+        """
+        Return the study resource for the given patient_key
+        """
+        study_key = self.patient_study_map().get(f"Patient/{patient_id}", None)
+        if not study_key:
+            if patient_id not in LOGGED_ALREADY:
+                logging.warning(f"Study key not found for patient {patient_id}")
+                LOGGED_ALREADY.append(patient_id)
+            return {}
+
+        # get the study resource
+        return self.study(study_key)
+
+    def resource_study(self, resource: dict) -> dict | None:
+        """
+        Return the study resource for the given patient_key
+        """
+        study_key = None
+
+        part_of_study_extension_url = "http://fhir-aggregator.org/fhir/StructureDefinition/part-of-study"
+        for extension in resource.get("extension", []):
+            if extension.get("url", "") == part_of_study_extension_url:
+                study_key = extension["valueReference"]["reference"]
+                break
+        if not study_key:
+            if part_of_study_extension_url not in LOGGED_ALREADY:
+                logging.warning(f"Study extension {part_of_study_extension_url} not found in {resource}")
+                LOGGED_ALREADY.append(part_of_study_extension_url)
+            return None
+
+        # get the study resource
+        return self.study(study_key)
+
+    @lru_cache(maxsize=None)
+    def patient_study_map(self) -> dict:
+        """
+        Return a dictionary mapping patient key to their associated study keys
+        """
+
+        sql = """
+        select
+        json_extract(subject.resource, '$.individual.reference') as patient_key,
+        json_extract(subject.resource, '$.study.reference') as study_key
+        from
+        resources as subject
+        where
+        subject.resource_type = 'ResearchSubject'
+        ;
+        """
+        cursor = self.connection.cursor()
+        cursor.execute(sql)
+        _patient_study = {}
+        for patient_key, study_key in cursor.fetchall():
+            _patient_study[patient_key] = study_key
+        return _patient_study
+
+    @lru_cache(maxsize=None)
+    def study(self, study_key) -> dict:
+        """
+        Return the study resource for the given study_key
+        """
+
+        sql = "select resource from resources where key = ?;"
+        cursor = self.connection.cursor()
+        cursor.execute(sql, (study_key,))
+
+        row = cursor.fetchone()
+        if row is None:
+            logging.warning(f"No rows returned from the query for study_key: {study_key}")
+            return {}
+
+        return json.loads(row[0])
+
     @staticmethod
-    def flattened_patient(patient: dict, observations_by_subject: dict) -> dict:
+    def flattened_patient(patient: dict, observations_by_subject: dict, study: dict | None = None) -> dict:
         """Return the flattened Patient record with related Observations"""
         flat_patient = traverse(patient)
 
@@ -605,5 +697,8 @@ class Dataframer(ResourceDB):
                 flat_observation = SimplifiedResource.build(resource=observation).values
                 flat_observation = {f"observation_{k}": v for k, v in flat_observation.items()}
                 flat_patient.update(flat_observation)
+
+        if study:
+            flat_patient.update(traverse(study))
 
         return flat_patient
