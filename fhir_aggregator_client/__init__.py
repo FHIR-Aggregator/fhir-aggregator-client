@@ -584,7 +584,7 @@ class VocabularyRunner:
                 next_link = next((link["url"] for link in data.get("link", []) if link["relation"] == "next"), None)
                 if next_link:
                     assert "write-fhir" not in next_link, f"Found write-fhir in from {url} next link: {next_link}"
-                url = next_link
+                url = str(next_link)
         return counts
 
     async def collect(self, resource_types: list[str], spinner: Halo = None) -> list:
