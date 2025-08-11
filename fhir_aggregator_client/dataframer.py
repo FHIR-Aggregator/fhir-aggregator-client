@@ -11,6 +11,7 @@ import inflection
 from pydantic import BaseModel, computed_field
 from typing import Dict, List, Optional, Tuple
 
+RESEARCH_STUDY_MAP_WARNING = "ResearchSubject, which maps patient to study, not found. Useful for multi study queries. "
 
 #######################
 # FHIR HELPER METHODS #
@@ -618,9 +619,9 @@ class Dataframer(ResourceDB):
         """
         study_key = self.patient_study_map().get(f"Patient/{patient_id}", None)
         if not study_key:
-            if patient_id not in LOGGED_ALREADY:
-                logging.warning(f"Study key not found for patient {patient_id}")
-                LOGGED_ALREADY.append(patient_id)
+            if RESEARCH_STUDY_MAP_WARNING not in LOGGED_ALREADY:
+                logging.warning(f"{RESEARCH_STUDY_MAP_WARNING} patient: {patient_id}")
+                LOGGED_ALREADY.append(RESEARCH_STUDY_MAP_WARNING)
             return {}
 
         # get the study resource
