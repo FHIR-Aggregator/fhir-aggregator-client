@@ -42,5 +42,9 @@ def test_run_patient_survival_graph(fhir_base_urls, tmp_path):
 
         row_count = count_rows_in_resources_table(db_path)
         total_rows += row_count
-        assert row_count == expected_row_count, f"{base_url}/ResearchStudy?identifier=TCGA-BRCA has {row_count} expected {expected_row_count}"
-    assert total_rows == expected_row_count * len(fhir_base_urls), f"Total rows {total_rows} expected {expected_row_count * len(fhir_base_urls)}"
+        assert (
+            row_count == expected_row_count
+        ), f"{base_url}/ResearchStudy?identifier=TCGA-BRCA has {row_count} expected {expected_row_count}"
+    assert total_rows == expected_row_count * len(
+        fhir_base_urls
+    ), f"Total rows {total_rows} expected {expected_row_count * len(fhir_base_urls)}"

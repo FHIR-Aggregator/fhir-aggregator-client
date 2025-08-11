@@ -17,6 +17,7 @@ def test_patient_survival_graph(fhir_base_urls, tmp_path, caplog):
     """
     from click.testing import CliRunner
     from fhir_aggregator_client.cli import cli
+
     db_path = str(tmp_path / "fhir-graph.sqlite")
 
     for base_url in fhir_base_urls:
@@ -36,10 +37,7 @@ def test_patient_survival_graph(fhir_base_urls, tmp_path, caplog):
         )
 
         assert result.exit_code == 0, result.output
-        result = runner.invoke(
-            cli,
-            ["results", "dataframe", "Patient"]
-        )
+        result = runner.invoke(cli, ["results", "dataframe", "Patient"])
 
         # check the logs for warnings
         # "Study key not found for patient" should only appear once
