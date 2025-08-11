@@ -1,2 +1,4 @@
-pytest
-pytest_httpx
+pytest==8.4.1
+pytest-httpx==0.35.0
+mypy==1.17.0
+

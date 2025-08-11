@@ -20,6 +20,8 @@ def test_run_patient_survival_graph(fhir_base_urls, tmp_path):
     from fhir_aggregator_client.cli import cli
 
     db_path = str(tmp_path / "fhir-graph.sqlite")
+    total_rows = 0
+    expected_row_count = 2330
     for base_url in fhir_base_urls:
         pathlib.Path(db_path).unlink(missing_ok=True)
 
@@ -39,4 +41,10 @@ def test_run_patient_survival_graph(fhir_base_urls, tmp_path):
         assert result.exit_code == 0, result.output
 
         row_count = count_rows_in_resources_table(db_path)
-        assert row_count == 2330, row_count
+        total_rows += row_count
+        assert (
+            row_count == expected_row_count
+        ), f"{base_url}/ResearchStudy?identifier=TCGA-BRCA has {row_count} expected {expected_row_count}"
+    assert total_rows == expected_row_count * len(
+        fhir_base_urls
+    ), f"Total rows {total_rows} expected {expected_row_count * len(fhir_base_urls)}"

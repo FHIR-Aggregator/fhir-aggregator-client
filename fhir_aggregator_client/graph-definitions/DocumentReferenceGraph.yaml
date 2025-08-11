@@ -1,0 +1,71 @@
+description: "
+  (FHIR-Aggregator) Retrieve a ResearchStudy and it's related entities.
+  DocumentReference resources are filtered by a study design criterion, e.g.:
+    - category:code = {data_category} (default: Transcriptome Profiling),
+      {workflow_type} (default: STAR - Counts),
+      {experimental_strategy} (default: RNA-Seq),
+      {access} (default: open)
+    - type:code = {file_type} (default: TSV)
+  while the Patient link can be filtered via list of comma separated patient identifiers {patientFilter}."
+id: file2patients
+name: File2Patients
+resourceType: GraphDefinition
+status: active
+link:
+  - params: 'study={ref}'
+    sourceId: ResearchStudy
+    targetId: ResearchSubject
+    path: ResearchStudy.id
+
+  - params: 'part-of-study={ref}&_count=1000&_total=accurate'
+    sourceId: ResearchStudy
+    targetId: Group
+    path: ResearchStudy.id
+
+ # - params: 'part-of-study={ref}&identifier={patientFilter}&_count=1000&_total=accurate'
+  - params: 'part-of-study={ref}&_count=1000&_total=accurate'
+    sourceId: ResearchStudy
+    targetId: Patient
+    path: ResearchStudy.id
+
+  - params: 'part-of-study={ref}&_count=1000&_total=accurate'
+    sourceId: ResearchStudy
+    targetId: Specimen
+    path: ResearchStudy.id
+
+  - params: 'part-of-study={ref}&_count=1000&_total=accurate'
+    sourceId: ResearchStudy
+    targetId: Observation
+    path: ResearchStudy.id
+
+  - params: 'part-of-study={ref}&_count=1000&_total=accurate'
+    sourceId: ResearchStudy
+    targetId: Procedure
+    path: ResearchStudy.id
+
+
+  - params: "part-of-study={ref}&category:code=Transcriptome%20Profiling&category:code=STAR%20-%20Counts&category:code=RNA-Seq&type:code=TSV&category:code=open&_count=1000&_total=accurate"
+    sourceId: ResearchStudy
+    targetId: DocumentReference
+    path: ResearchStudy.id
+
+  - params: 'part-of-study={ref}&_count=1000&_total=accurate'
+    sourceId: ResearchStudy
+    targetId: ServiceRequest
+    path: ResearchStudy.id
+
+  - params: 'part-of-study={ref}&_count=1000&_total=accurate'
+    sourceId: ResearchStudy
+    targetId: ImagingStudy
+    path: ResearchStudy.id
+
+  - params: 'part-of-study={ref}&_count=1000&_total=accurate'
+    sourceId: ResearchStudy
+    targetId: Condition
+    path: ResearchStudy.id
+
+  - params: 'part-of-study={ref}&_count=1000&_total=accurate'
+    sourceId: ResearchStudy
+    targetId: MedicationAdministration
+    path: ResearchStudy.id
+
