@@ -38,11 +38,14 @@ def test_vocabulary(fhir_base_urls, expected_study_identifiers, tmp_path):
 
         try:
             # assert row_count == 21847, f"Found {row_count} in {base_url}"
+            print(base_url, 'actual', sorted(actual_study_identifiers))
+            print(base_url, 'expected', sorted(expected_study_identifiers))
             assert actual_study_identifiers == expected_study_identifiers, [
-                [_ for _ in actual_study_identifiers.difference(expected_study_identifiers)],
-                [_ for _ in expected_study_identifiers.difference(actual_study_identifiers)],
-                base_url,
+                f'unexpected identifiers in {base_url}', [_ for _ in actual_study_identifiers.difference(expected_study_identifiers)],
+                f'missing identifiers in {base_url}', [_ for _ in expected_study_identifiers.difference(actual_study_identifiers)],
             ]
         except Exception as e:
             exceptions.append(e)
+
+        print(exceptions)
         assert not exceptions, exceptions
