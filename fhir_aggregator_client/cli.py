@@ -28,6 +28,19 @@ DEFAULT_VISUALIZATION_PATH = "fhir-graph.html"
 DEFAULT_TSV_PATH = "fhir-graph.tsv"
 
 
+def _format_error(e: Exception) -> str:
+    """Format an exception for the user.
+
+    Always include the exception type so the user never sees a bare, unhelpful
+    'Error:' with no detail (some exceptions, e.g. an assertion with no message,
+    have an empty str()). Run with --debug for a full traceback.
+    """
+    msg = str(e).strip()
+    if msg:
+        return f"Error: {type(e).__name__}: {msg}"
+    return f"Error: {type(e).__name__} (no message); run with --debug for a traceback."
+
+
 class CustomDefaultGroup(click.Group):
     def list_commands(self, ctx):
         # def natural_keys(text):
@@ -124,7 +137,7 @@ def vocabulary(
 
     except Exception as e:
         logging.error(f"Error: {e}", exc_info=True)
-        click.echo(f"Error: {e}", file=sys.stderr)
+        click.echo(_format_error(e), file=sys.stderr)
         if debug:
             raise e
 
@@ -233,7 +246,7 @@ def run(
         asyncio.run(run_runner())
     except Exception as e:
         logging.error(f"Error: {e}", exc_info=True)
-        click.echo(f"Error: {e}", file=sys.stderr)
+        click.echo(_format_error(e), file=sys.stderr)
         if debug:
             raise e
 
@@ -273,7 +286,7 @@ def visualize(db_path: str, output_path: click.File, ignored_edges: list[str]) -
         click.echo(f"Wrote: {output_path.name}", file=sys.stderr)
     except Exception as e:
         logging.error(f"Error: {e}", exc_info=True)
-        click.echo(f"Error: {e}", file=sys.stderr)
+        click.echo(_format_error(e), file=sys.stderr)
 
 
 @results.command(name="summarize")
@@ -293,7 +306,7 @@ def summarize(db_path: str) -> None:
 
     except Exception as e:
         logging.error(f"Error: {e}", exc_info=True)
-        click.echo(f"Error: {e}", file=sys.stderr)
+        click.echo(_format_error(e), file=sys.stderr)
         # raise e
 
 
@@ -351,7 +364,7 @@ def dataframe(db_path: str, output_path: click.File, launch_dtale: bool, data_ty
 
     except Exception as e:
         logging.error(f"Error: {e}", exc_info=True)
-        click.echo(f"Error: {e}", file=sys.stderr)
+        click.echo(_format_error(e), file=sys.stderr)
         # raise e
 
 

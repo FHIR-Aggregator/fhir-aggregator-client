@@ -355,9 +355,22 @@ class GraphDefinitionRunner(ResourceDB):
                             logging.warning(f"RemoteProtocolError: {e} sleeping for 5 seconds. Retry: {retry}")
                         await asyncio.sleep(5)
                         retry += 1
+                    elif err.response.status_code == 401:
+                        msg = (
+                            f"Authentication error (401 Unauthorized) for url: {query_url}\n"
+                            f"Your credentials have expired or are missing. "
+                            f"Please re-authenticate (ex. run 'gcloud auth application-default login') and try again."
+                        )
+                        logging.error(msg)
+                        if spinner:
+                            spinner.fail(msg)
+                        raise RuntimeError(msg) from e
                     else:
+                        msg = f"HTTP {err.response.status_code} error for url: {query_url} - {e}"
+                        logging.warning(msg)
+                        if spinner:
+                            spinner.fail(msg)
                         retry = max_retry
-                        logging.warning(f"RemoteProtocolError: {e} abandoning thread for url {query_url}")
 
         return []
 
