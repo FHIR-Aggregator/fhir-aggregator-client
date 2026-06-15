@@ -357,9 +357,9 @@ class GraphDefinitionRunner(ResourceDB):
                         retry += 1
                     elif err.response.status_code == 401:
                         msg = (
-                            f"Authentication error (401 Unauthorized) for url: {query_url}\n"
-                            f"Your credentials have expired or are missing. "
-                            f"Please re-authenticate (ex. run 'gcloud auth application-default login') and try again."
+                            f"Authentication error (401 Unauthorized) for url: {query_url}. "
+                            "Your credentials have expired or are missing. "
+                            "Please re-authenticate (e.g. run 'gcloud auth application-default login') and try again."
                         )
                         logging.error(msg)
                         if spinner:

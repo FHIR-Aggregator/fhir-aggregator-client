@@ -33,12 +33,12 @@ def _format_error(e: Exception) -> str:
 
     Always include the exception type so the user never sees a bare, unhelpful
     'Error:' with no detail (some exceptions, e.g. an assertion with no message,
-    have an empty str()). Run with --debug for a full traceback.
+    have an empty str()). Re-run with --debug (where supported) for a full traceback.
     """
     msg = str(e).strip()
     if msg:
         return f"Error: {type(e).__name__}: {msg}"
-    return f"Error: {type(e).__name__} (no message); run with --debug for a traceback."
+    return f"Error: {type(e).__name__} (no message); re-run with --debug (where supported) for a traceback."
 
 
 class CustomDefaultGroup(click.Group):
