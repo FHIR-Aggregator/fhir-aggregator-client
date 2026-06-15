@@ -6,6 +6,7 @@ A 401 used to fall through to the generic ``else`` branch, which silently set
 credential as "no results". It should instead raise a clear RuntimeError that
 tells the user to re-authenticate.
 """
+
 import asyncio
 
 import pytest
