@@ -114,8 +114,7 @@ class ResourceDB:
         Create the 'resources' table if it doesn't already exist.
         """
         with self.connection:
-            self.connection.execute(
-                """
+            self.connection.execute("""
                 CREATE TABLE IF NOT EXISTS resources (
                     id VARCHAR NOT NULL,
                     resource_type VARCHAR NOT NULL,
@@ -123,14 +122,11 @@ class ResourceDB:
                     resource JSON NOT NULL,
                     PRIMARY KEY (id, resource_type)
                 )
-                """
-            )
-            self.connection.execute(
-                """
+                """)
+            self.connection.execute("""
                 CREATE INDEX IF NOT EXISTS idx_resources_key
                 ON resources (key)
-                """
-            )
+                """)
 
     def add(self, resource: dict[str, Any]) -> None:
         """
@@ -213,13 +209,11 @@ class ResourceDB:
             dict: A dictionary with resource_type as keys and counts as values.
         """
         with self.connection:
-            cursor = self.connection.execute(
-                """
+            cursor = self.connection.execute("""
                    SELECT resource_type, COUNT(*)
                    FROM resources
                    GROUP BY resource_type
-               """
-            )
+               """)
             return {row[0]: row[1] for row in cursor.fetchall()}
 
     def close(self) -> None:
