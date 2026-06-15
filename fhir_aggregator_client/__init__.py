@@ -2,16 +2,16 @@
 import asyncio
 import json
 import logging
+import os
 import sqlite3
 import sys
 import tempfile
 from collections import defaultdict
-from typing import Any, Optional, Callable
+from typing import Any, Callable, Optional
 
 import httpx
 from dotty_dict import dotty
 from halo import Halo
-import os
 
 UNKNOWN_CATEGORY = {"coding": [{"system": "http://snomed.info/sct", "code": "261665006", "display": "Unknown"}]}
 
