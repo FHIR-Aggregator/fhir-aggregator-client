@@ -1,5 +1,5 @@
 description: "(FHIR-Aggregator) Condition to ResearchStudy and children focusing on Observations [NCIT_C156418,NCIT_C156419,NCIT_C164934]. fhir-query '/Condition?code:code=70179006'"
-id: condition-graph
+id: cholangiocarcinoma-graph
 name: CDACholangiocarcinomaGraph
 resourceType: GraphDefinition
 status: active
