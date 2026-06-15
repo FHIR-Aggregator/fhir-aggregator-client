@@ -13,7 +13,13 @@ from fhir.resources.graphdefinition import GraphDefinition
 from halo import Halo
 from tabulate import tabulate
 
-from fhir_aggregator_client import GraphDefinitionRunner, setup_logging, ensure_our_directory
+from fhir_aggregator_client import (
+    GraphDefinitionRunner,
+    setup_logging,
+    ensure_our_directory,
+    GoogleADCAuth,
+    get_auth_headers_for_url,
+)
 from fhir_aggregator_client.dataframer import Dataframer
 from fhir_aggregator_client.visualizer import visualize_aggregation
 from fhir_aggregator_client.vocabulary import vocabulary_simplifier
@@ -90,6 +96,7 @@ def vocabulary(
     """
 
     setup_logging(debug, log_file)
+    google_auth = GoogleADCAuth()
 
     if fhir_base_url.endswith("/"):
         fhir_base_url = fhir_base_url[:-1]
@@ -99,7 +106,7 @@ def vocabulary(
     try:
         with Halo(text="Collecting vocabularies", spinner="dots", stream=sys.stderr) as spinner:
             query_url = f"{fhir_base_url}/Observation?_count=1000&code=vocabulary&_include=Observation:focus"
-            response = requests.get(query_url, timeout=300)
+            response = requests.get(query_url, timeout=300, headers=get_auth_headers_for_url(query_url, google_auth))
             response.raise_for_status()
             bundle = response.json()
             results = bundle
