@@ -139,7 +139,13 @@ def vocabulary(
         logging.error(f"Error: {e}", exc_info=True)
         click.echo(_format_error(e), file=sys.stderr)
         if debug:
-            raise e
+            # In debug mode this uses raise e,
+            # which resets the traceback to this line and
+            # can hide the original error location.
+            # Since the CLI already logged exc_info=True and
+            # the help text suggests --debug for a traceback,
+            # use a bare raise to preserve the original traceback.
+            raise
 
 
 @cli.command()
