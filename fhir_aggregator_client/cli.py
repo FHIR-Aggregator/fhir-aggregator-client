@@ -50,6 +50,7 @@ class CustomDefaultGroup(click.Group):
 
 
 @click.group(cls=CustomDefaultGroup)
+@click.version_option()
 def cli():
     """FHIR-Aggregator utilities."""
     pass
