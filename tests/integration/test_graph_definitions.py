@@ -21,7 +21,7 @@ def test_run_patient_survival_graph(fhir_base_urls, tmp_path):
 
     db_path = str(tmp_path / "fhir-graph.sqlite")
     total_rows = 0
-    expected_row_count = 2330
+    expected_row_count = 4660
     for base_url in fhir_base_urls:
         pathlib.Path(db_path).unlink(missing_ok=True)
 

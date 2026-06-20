@@ -3,6 +3,7 @@ requests==2.32.3
 PyYAML==6.0.2
 halo==0.0.31
 httpx==0.28.1
+google-auth>=2.35.0
 
 
 fhir.resources==8.0.0b4
