@@ -83,6 +83,18 @@ class ResourceDB:
                 """
             )
 
+    def reset(self) -> None:
+        """
+        Remove all rows from the 'resources' table.
+
+        Used so that a fresh run reports counts for only the current query
+        rather than accumulating across previous runs that reused the same
+        database file.
+        """
+        with self.connection:
+            self.connection.execute("DELETE FROM resources")
+        self.adds_counters = defaultdict(int)
+
     def add(self, resource: dict[str, Any]) -> None:
         """
         Add a resource to the 'resources' table.

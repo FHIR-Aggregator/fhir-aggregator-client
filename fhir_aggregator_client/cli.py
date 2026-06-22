@@ -1,9 +1,10 @@
 import asyncio
 import json
 import logging
+import os
 import pathlib
 import sys
-from typing import Any
+import tempfile
 
 import click
 import pandas as pd
@@ -26,6 +27,32 @@ DB_PATH_ENV_VAR = "FHIR_DB_PATH"
 DEFAULT_DB_PATH = pathlib.Path(ensure_our_directory()) / "fhir-graph.sqlite"
 DEFAULT_VISUALIZATION_PATH = "fhir-graph.html"
 DEFAULT_TSV_PATH = "fhir-graph.tsv"
+
+
+def _atomic_write_text(output_path: str, text: str) -> None:
+    """Write text to output_path via a temp file, moving into place only on success.
+
+    Ensures a failed render never leaves a partial or empty file at output_path.
+    """
+    path = pathlib.Path(output_path)
+    tmp = tempfile.NamedTemporaryFile(
+        mode="w",
+        encoding="utf-8",
+        dir=str(path.parent) if str(path.parent) else ".",
+        prefix=f".{path.name}.",
+        suffix=".tmp",
+        delete=False,
+    )
+    try:
+        with tmp:
+            tmp.write(text)
+        os.replace(tmp.name, output_path)
+    except Exception:
+        try:
+            os.unlink(tmp.name)
+        except OSError:
+            pass
+        raise
 
 
 class CustomDefaultGroup(click.Group):
@@ -61,10 +88,10 @@ def cli():
     is_flag=True,
     help="Open the graph in a browser using the dtale package for interactive data exploration.",
 )
-@click.argument("output_path", type=click.File("w"), required=False, default=sys.stdout)
+@click.argument("output_path", required=False, default=None)
 def vocabulary(
     fhir_base_url: str,
-    output_path: click.File,
+    output_path: str,
     debug: bool,
     log_file: str,
     output_format: str,
@@ -80,8 +107,6 @@ def vocabulary(
 
     if fhir_base_url.endswith("/"):
         fhir_base_url = fhir_base_url[:-1]
-
-    output_stream: Any = output_path
 
     try:
         with Halo(text="Collecting vocabularies", spinner="dots", stream=sys.stderr) as spinner:
@@ -104,30 +129,41 @@ def vocabulary(
             if not output_format in ["yaml", "json"]:
                 results = vocabulary_simplifier(bundle)
 
-            if output_format == "yaml":
-                yaml_results = yaml.dump(results, default_flow_style=False, sort_keys=False)
-                print(yaml_results, file=output_stream)
-                spinner.succeed(f"Wrote {vocabulary_count} vocabularies to {output_stream.name}")
-            elif output_format == "json":
-                print(json.dumps(results, indent=2), file=output_stream)
-                spinner.succeed(f"Wrote {vocabulary_count} vocabularies to {output_stream.name}")
-            else:
-                df = pd.DataFrame(results)
-                if launch_dtale:
-                    # TODO - add check that dtale is installed
-                    import dtale
+            # Render the full output before touching the destination so a failed
+            # query never leaves behind a missing or truncated output file.
+            if launch_dtale:
+                # TODO - add check that dtale is installed
+                import dtale
 
-                    spinner.succeed(f"Showing {len(results)} vocabularies in browser")
-                    dtale.show(df, subprocess=False, open_browser=True, port=40000)
-                else:
-                    df.to_csv(output_stream, sep="\t", index=False)
-                    spinner.succeed(f"Wrote {len(results)} vocabularies to {output_stream.name}")
+                df = pd.DataFrame(results)
+                spinner.succeed(f"Showing {len(results)} vocabularies in browser")
+                dtale.show(df, subprocess=False, open_browser=True, port=40000)
+                return
+
+            if output_format == "yaml":
+                rendered = yaml.dump(results, default_flow_style=False, sort_keys=False) + "\n"
+                count = vocabulary_count
+            elif output_format == "json":
+                rendered = json.dumps(results, indent=2) + "\n"
+                count = vocabulary_count
+            else:
+                rendered = pd.DataFrame(results).to_csv(sep="\t", index=False)
+                count = len(results)
+
+            if output_path is None:
+                sys.stdout.write(rendered)
+                destination = "stdout"
+            else:
+                _atomic_write_text(output_path, rendered)
+                destination = output_path
+
+            spinner.succeed(f"Wrote {count} vocabularies to {destination}")
 
     except Exception as e:
         logging.error(f"Error: {e}", exc_info=True)
-        click.echo(f"Error: {e}", file=sys.stderr)
         if debug:
             raise e
+        raise click.ClickException(str(e) or e.__class__.__name__)
 
 
 @cli.command()
@@ -158,6 +194,14 @@ def ls(output_format) -> None:
     help=f"Path to sqlite database. default: {DEFAULT_DB_PATH} env: {DB_PATH_ENV_VAR}",
     envvar=DB_PATH_ENV_VAR,
 )
+@click.option(
+    "--append",
+    is_flag=True,
+    default=False,
+    show_default=True,
+    help="Accumulate into an existing database instead of clearing it first. "
+    "By default the database is reset so the reported counts reflect only this run.",
+)
 @click.option("--debug", is_flag=True, help="Enable debug mode.")
 @click.option("--log-file", default=DEFAULT_LOG_FILE, help=f"Path to the log file. default={DEFAULT_LOG_FILE}")
 @click.argument("graph-definition", required=True)
@@ -167,6 +211,7 @@ def run(
     fhir_query: str,
     fhir_base_url: str,
     db_path: str,
+    append: bool,
     log_file: str,
     debug: bool,
 ) -> None:
@@ -187,14 +232,25 @@ def run(
     if not fhir_query:
         raise click.UsageError("You must provide a fhir_query.")
 
-    if pathlib.Path(db_path).exists():
-        click.secho(
-            f"warning: Database already exists at {db_path} and will be used. If this is not what you intended, please remove the existing database or provide a new path.",
-            file=sys.stderr,
-            fg="yellow",
-        )
+    db_exists = pathlib.Path(db_path).exists()
 
     runner = GraphDefinitionRunner(fhir_base_url, db_path, debug)
+
+    if db_exists:
+        if append:
+            click.secho(
+                f"warning: Appending to existing database at {db_path}. "
+                "Reported counts will include resources from previous runs.",
+                file=sys.stderr,
+                fg="yellow",
+            )
+        else:
+            click.secho(
+                f"Clearing existing database at {db_path} (use --append to accumulate instead).",
+                file=sys.stderr,
+                fg="yellow",
+            )
+            runner.reset()
 
     async def run_runner() -> None:
         graph_definitions = ls_graph_definitions()
