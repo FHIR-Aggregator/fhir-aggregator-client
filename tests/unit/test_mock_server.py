@@ -1,4 +1,5 @@
 # tests/unit/test_fhir_server.py
+import inspect
 import pathlib
 
 import httpx
@@ -8,6 +9,17 @@ from click.testing import CliRunner
 from fhir_aggregator_client.cli import cli as main
 from fhir_aggregator_client.dataframer import Dataframer
 from fhir_aggregator_client.visualizer import visualize_aggregation
+
+
+def _separate_stderr_runner() -> CliRunner:
+    """CliRunner that captures stderr separately, across click versions.
+
+    click < 8.2 needs ``CliRunner(mix_stderr=False)``; click >= 8.2 removed that
+    argument and always separates stderr.
+    """
+    if "mix_stderr" in inspect.signature(CliRunner).parameters:
+        return CliRunner(mix_stderr=False)  # type: ignore[call-arg]  # removed in click >= 8.2
+    return CliRunner()
 
 
 @pytest.mark.usefixtures("mock_fhir_server")
@@ -28,7 +40,7 @@ def test_get_nonexistent_patient() -> None:
 @pytest.mark.usefixtures("mock_fhir_server")
 @pytest.mark.httpx_mock(can_send_already_matched_responses=True)
 def test_runner(tmp_path: str) -> None:
-    runner = CliRunner(mix_stderr=False)
+    runner = _separate_stderr_runner()
     result = runner.invoke(
         main,
         [
