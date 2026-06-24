@@ -98,21 +98,34 @@ Thank you for contributing to our project! Your efforts are highly appreciated. 
 
 ## Distribution
 
-- PyPi
+Releases to [PyPI](https://pypi.org/project/fhir-aggregator-client/) are published
+automatically by the [`Publish to PyPI`](.github/workflows/publish.yml) GitHub Action
+whenever a `v*` tag is pushed. The action builds the sdist and wheel and uploads them
+using [PyPI Trusted Publishing](https://docs.pypi.org/trusted-publishers/) (OIDC), so
+no API tokens or passwords need to be stored or exported.
+
+### Cutting a release
+
+1. Bump the `version` in [`setup.py`](setup.py) (e.g. `0.2.2` -> `0.2.3`).
+2. Commit the bump and merge it to the default branch.
+3. Tag the commit and push the tag:
+
+   ```
+   git tag v0.2.3
+   git push origin v0.2.3
+   ```
+
+The tag version (without the leading `v`) must match the `version` in `setup.py`;
+the workflow verifies this and fails the build if they disagree, before anything is
+published.
+
+### Building locally (optional)
+
+To produce the distribution artifacts on your machine without publishing:
 
 ```
-# update pypi
-
-# pypi credentials - see https://twine.readthedocs.io/en/stable/#environment-variables
-
-export TWINE_USERNAME=  #  the username to use for authentication to the repository.
-export TWINE_PASSWORD=  # the password to use for authentication to the repository.
-
-# this could be maintained as so: export $(cat .env | xargs)
-
-rm -r build/
-rm -r dist/
-python3  setup.py sdist bdist_wheel
-twine upload dist/*
-
+rm -rf build/ dist/
+python3 -m build
+twine check dist/*
 ```
+
