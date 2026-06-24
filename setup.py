@@ -23,6 +23,8 @@ setup(
     url='https://github.com/FHIR-Aggregator/fhir-aggregator-client.git',
     extras_require={
         'dtale': ['dtale'],
+        # Tools for running notebooks/ (install with: pip install -e ".[notebook]")
+        'notebook': ['jupyterlab>=4.0', 'ipykernel>=6.0'],
     },
     entry_points={
         "console_scripts": [

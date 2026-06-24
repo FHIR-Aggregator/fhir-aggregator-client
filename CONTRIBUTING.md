@@ -27,6 +27,18 @@ endpoint: https://aced-idp.org
 username: your-email@institution.edu
 ```
 
+### Running the notebooks
+
+The notebooks under [`notebooks/`](notebooks/) need Jupyter and a kernel, which are
+not part of the runtime dependencies. Install them via the `notebook` extra — ideally
+into a clean virtual environment so unrelated packages don't surface spurious warnings:
+
+```bash
+python3 -m venv venv ; source venv/bin/activate
+pip install -e ".[notebook]"
+jupyter lab notebooks/fhir_aggregator.ipynb
+```
+
 ### Making Changes
 
 
