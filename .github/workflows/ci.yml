@@ -1,16 +1,19 @@
 name: CI
 
-on: [push, pull_request]
+# Runs on every push / pull_request, and is also callable as a reusable workflow
+# (workflow_call) so publish.yml can reuse these checks as a release gate.
+on: [push, pull_request, workflow_call]
 
 jobs:
-  build:
+  checks:
+    name: Run checks
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
@@ -18,14 +21,13 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install setuptools wheel black mypy==1.17.0 pytest==8.4.1 pytest-cov==6.0.0 pytest-httpx==0.35.0
-
           pip install .
 
       - name: Run Black
         run: black --check --verbose fhir_aggregator_client/ tests/
 
       - name: Run Mypy
-        run: mypy --ignore-missing-imports  fhir_aggregator_client/ tests/
+        run: mypy --ignore-missing-imports fhir_aggregator_client/ tests/
 
       - name: Run Pytest
         run: pytest tests/unit

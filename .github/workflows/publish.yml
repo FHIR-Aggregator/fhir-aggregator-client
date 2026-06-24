@@ -6,8 +6,12 @@ on:
       - 'v*'
 
 jobs:
+  checks:
+    uses: ./.github/workflows/ci.yml
+
   build:
     name: Build distribution
+    needs: checks
     runs-on: ubuntu-latest
 
     steps:
