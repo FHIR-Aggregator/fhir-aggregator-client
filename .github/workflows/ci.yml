@@ -1,8 +1,16 @@
 name: CI
 
-# Runs on every push / pull_request, and is also callable as a reusable workflow
+# Runs on branch pushes / pull_requests, and is also callable as a reusable workflow
 # (workflow_call) so publish.yml can reuse these checks as a release gate.
-on: [push, pull_request, workflow_call]
+#
+# Tags are excluded from the push trigger: a tag push already runs these checks via
+# publish.yml's gate, so without this exclusion CI would also fire and run them twice.
+on:
+  push:
+    tags-ignore:
+      - '**'
+  pull_request:
+  workflow_call:
 
 jobs:
   checks:
