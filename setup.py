@@ -13,7 +13,7 @@ with open('README.md', 'r') as f:
 
 setup(
     name="fhir_aggregator_client",
-    version="0.2.3",
+    # version is derived from git tags by setuptools-scm (see pyproject.toml)
     packages=find_packages(exclude=['ez_setup', 'tests', 'tests.*']),
     install_requires=parse_requirements("requirements.txt"),
     long_description=long_description,

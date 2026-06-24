@@ -100,24 +100,43 @@ Thank you for contributing to our project! Your efforts are highly appreciated. 
 
 Releases to [PyPI](https://pypi.org/project/fhir-aggregator-client/) are published
 automatically by the [`Publish to PyPI`](.github/workflows/publish.yml) GitHub Action
-whenever a `v*` tag is pushed. The action builds the sdist and wheel and uploads them
-using [PyPI Trusted Publishing](https://docs.pypi.org/trusted-publishers/) (OIDC), so
-no API tokens or passwords need to be stored or exported.
+whenever a `v*` tag is pushed. The action builds the sdist and wheel, uploads them
+using [PyPI Trusted Publishing](https://docs.pypi.org/trusted-publishers/) (OIDC) — so
+no API tokens or passwords need to be stored or exported — and creates a matching
+[GitHub Release](https://github.com/FHIR-Aggregator/fhir-aggregator-client/releases)
+with the built artifacts attached.
+
+The package version is derived from the git tag by
+[`setuptools-scm`](https://setuptools-scm.readthedocs.io/) (configured in
+[`pyproject.toml`](pyproject.toml)). There is **no version string to edit** — the tag
+is the single source of truth, and `fq --version` reports whatever was tagged.
 
 ### Cutting a release
 
-1. Bump the `version` in [`setup.py`](setup.py) (e.g. `0.2.2` -> `0.2.3`).
-2. Commit the bump and merge it to the default branch.
-3. Tag the commit and push the tag:
+```
+git checkout development && git pull
+git tag v0.2.4
+git push origin v0.2.4
+```
 
-   ```
-   git tag v0.2.3
-   git push origin v0.2.3
-   ```
+That's it: the tag triggers the build, the PyPI upload, and the GitHub Release.
 
-The tag version (without the leading `v`) must match the `version` in `setup.py`;
-the workflow verifies this and fails the build if they disagree, before anything is
-published.
+### Pre-releases
+
+Use a [PEP 440](https://peps.python.org/pep-0440/) pre-release tag (`rc`, `a`, or `b`):
+
+```
+git tag v0.3.0rc1
+git push origin v0.3.0rc1
+```
+
+The workflow marks it as a pre-release on GitHub, and PyPI marks it as a pre-release
+automatically: a plain `pip install fhir-aggregator-client` skips it, and users opt in
+with
+
+```
+pip install --pre fhir-aggregator-client   # or pin: ==0.3.0rc1
+```
 
 ### Building locally (optional)
 
@@ -125,7 +144,39 @@ To produce the distribution artifacts on your machine without publishing:
 
 ```
 rm -rf build/ dist/
-python3 -m build
+python -m build
 twine check dist/*
 ```
+
+### Manual release (fallback)
+
+The tag-triggered workflow above is the normal path, but a maintainer can still
+publish by hand (e.g. if CI is unavailable). Token-based `twine` uploads continue to
+work alongside Trusted Publishing.
+
+> **Important:** the version is derived from git by `setuptools-scm`, so **build from
+> the tag**, not from a branch. Building from an untagged commit produces a development
+> version like `0.2.4.post3` instead of the clean `0.2.4` you intend.
+
+```sh
+# 1. Create and push the tag (or check out an existing one)
+git checkout development && git pull
+git tag v0.2.4
+git push origin v0.2.4
+
+# 2. Build FROM the tag so setuptools-scm resolves a clean version
+git checkout v0.2.4
+rm -rf build/ dist/
+python -m build
+twine check dist/*
+
+# 3. Upload (uses your PyPI API token; see
+#    https://twine.readthedocs.io/en/stable/#environment-variables)
+export TWINE_USERNAME=__token__
+export TWINE_PASSWORD=pypi-...
+twine upload dist/*
+```
+
+Avoid publishing the same version both manually and via the workflow — PyPI rejects
+duplicate uploads of an existing version.
 
