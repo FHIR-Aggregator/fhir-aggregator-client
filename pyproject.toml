@@ -7,5 +7,11 @@ python_version = 3.12
 strict = true
 
 [build-system]
-requires = ["setuptools", "wheel", "black", "mypy", "pytest", "pytest-cov", "pytest_httpx"]
+requires = ["setuptools>=64", "setuptools-scm>=8", "wheel", "black", "mypy", "pytest", "pytest-cov", "pytest_httpx"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+# Version is derived from the latest git tag (e.g. v0.2.4 -> 0.2.4).
+# Writes the resolved version into the build so importlib.metadata can read it.
+version_scheme = "post-release"
+local_scheme = "no-local-version"
