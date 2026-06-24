@@ -4,16 +4,22 @@ on:
   push:
     tags:
       - 'v*'
-  release:
-    types: [published]
 
 jobs:
+  checks:
+    uses: ./.github/workflows/ci.yml
+
   build:
     name: Build distribution
+    needs: checks
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          # setuptools-scm derives the version from git tags, so it needs the
+          # full history (and the tag) rather than a shallow clone.
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -56,3 +62,33 @@ jobs:
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+
+  github-release:
+    name: Create GitHub Release
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # required to create a GitHub Release
+
+    steps:
+      - name: Download distribution artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          # Mark PEP 440 pre-releases (rc/a/b/dev) as GitHub pre-releases.
+          prerelease_flag=""
+          if [[ "${GITHUB_REF_NAME}" =~ (rc|a|b|alpha|beta|dev) ]]; then
+            prerelease_flag="--prerelease"
+          fi
+          gh release create "${GITHUB_REF_NAME}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "${GITHUB_REF_NAME}" \
+            --generate-notes \
+            ${prerelease_flag} \
+            dist/*

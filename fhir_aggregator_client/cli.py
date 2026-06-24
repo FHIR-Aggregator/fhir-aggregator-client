@@ -13,7 +13,13 @@ from fhir.resources.graphdefinition import GraphDefinition
 from halo import Halo
 from tabulate import tabulate
 
-from fhir_aggregator_client import GraphDefinitionRunner, setup_logging, ensure_our_directory
+from fhir_aggregator_client import (
+    GraphDefinitionRunner,
+    setup_logging,
+    ensure_our_directory,
+    GoogleADCAuth,
+    get_auth_headers_for_url,
+)
 from fhir_aggregator_client.dataframer import Dataframer
 from fhir_aggregator_client.visualizer import visualize_aggregation
 from fhir_aggregator_client.vocabulary import vocabulary_simplifier
@@ -26,6 +32,19 @@ DB_PATH_ENV_VAR = "FHIR_DB_PATH"
 DEFAULT_DB_PATH = pathlib.Path(ensure_our_directory()) / "fhir-graph.sqlite"
 DEFAULT_VISUALIZATION_PATH = "fhir-graph.html"
 DEFAULT_TSV_PATH = "fhir-graph.tsv"
+
+
+def _format_error(e: Exception) -> str:
+    """Format an exception for the user.
+
+    Always include the exception type so the user never sees a bare, unhelpful
+    'Error:' with no detail (some exceptions, e.g. an assertion with no message,
+    have an empty str()). Re-run with --debug (where supported) for a full traceback.
+    """
+    msg = str(e).strip()
+    if msg:
+        return f"Error: {type(e).__name__}: {msg}"
+    return f"Error: {type(e).__name__} (no message); re-run with --debug (where supported) for a traceback."
 
 
 class CustomDefaultGroup(click.Group):
@@ -77,6 +96,7 @@ def vocabulary(
     """
 
     setup_logging(debug, log_file)
+    google_auth = GoogleADCAuth()
 
     if fhir_base_url.endswith("/"):
         fhir_base_url = fhir_base_url[:-1]
@@ -86,7 +106,7 @@ def vocabulary(
     try:
         with Halo(text="Collecting vocabularies", spinner="dots", stream=sys.stderr) as spinner:
             query_url = f"{fhir_base_url}/Observation?_count=1000&code=vocabulary&_include=Observation:focus"
-            response = requests.get(query_url, timeout=300)
+            response = requests.get(query_url, timeout=300, headers=get_auth_headers_for_url(query_url, google_auth))
             response.raise_for_status()
             bundle = response.json()
             results = bundle
@@ -125,9 +145,15 @@ def vocabulary(
 
     except Exception as e:
         logging.error(f"Error: {e}", exc_info=True)
-        click.echo(f"Error: {e}", file=sys.stderr)
+        click.echo(_format_error(e), file=sys.stderr)
         if debug:
-            raise e
+            # In debug mode this uses raise e,
+            # which resets the traceback to this line and
+            # can hide the original error location.
+            # Since the CLI already logged exc_info=True and
+            # the help text suggests --debug for a traceback,
+            # use a bare raise to preserve the original traceback.
+            raise
 
 
 @cli.command()
@@ -234,7 +260,7 @@ def run(
         asyncio.run(run_runner())
     except Exception as e:
         logging.error(f"Error: {e}", exc_info=True)
-        click.echo(f"Error: {e}", file=sys.stderr)
+        click.echo(_format_error(e), file=sys.stderr)
         if debug:
             raise e
 
@@ -274,7 +300,7 @@ def visualize(db_path: str, output_path: click.File, ignored_edges: list[str]) -
         click.echo(f"Wrote: {output_path.name}", file=sys.stderr)
     except Exception as e:
         logging.error(f"Error: {e}", exc_info=True)
-        click.echo(f"Error: {e}", file=sys.stderr)
+        click.echo(_format_error(e), file=sys.stderr)
 
 
 @results.command(name="summarize")
@@ -294,7 +320,7 @@ def summarize(db_path: str) -> None:
 
     except Exception as e:
         logging.error(f"Error: {e}", exc_info=True)
-        click.echo(f"Error: {e}", file=sys.stderr)
+        click.echo(_format_error(e), file=sys.stderr)
         # raise e
 
 
@@ -352,7 +378,7 @@ def dataframe(db_path: str, output_path: click.File, launch_dtale: bool, data_ty
 
     except Exception as e:
         logging.error(f"Error: {e}", exc_info=True)
-        click.echo(f"Error: {e}", file=sys.stderr)
+        click.echo(_format_error(e), file=sys.stderr)
         # raise e
 
 
