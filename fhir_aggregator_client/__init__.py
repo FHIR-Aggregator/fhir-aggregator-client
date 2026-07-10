@@ -2,18 +2,67 @@
 import asyncio
 import json
 import logging
+import os
 import sqlite3
 import sys
 import tempfile
 from collections import defaultdict
-from typing import Any, Optional, Callable
+from typing import Any, Callable, Optional
+from urllib.parse import urlparse
 
 import httpx
 from dotty_dict import dotty
 from halo import Halo
-import os
 
 UNKNOWN_CATEGORY = {"coding": [{"system": "http://snomed.info/sct", "code": "261665006", "display": "Unknown"}]}
+GOOGLE_CLOUD_PLATFORM_SCOPE = "https://www.googleapis.com/auth/cloud-platform"
+
+
+class GoogleADCAuth:
+    """Lazy ADC token loader/refresh helper for Google Healthcare API requests."""
+
+    def __init__(self) -> None:
+        self._credentials: Any = None
+        self._request: Any = None
+
+    def _ensure_credentials(self) -> None:
+        if self._credentials is not None:
+            return
+        try:
+            import google.auth
+            from google.auth.transport.requests import Request as GoogleAuthRequest
+        except ImportError as e:
+            raise RuntimeError(
+                "google-auth is required for Google Healthcare API authentication. " "Install dependencies and re-run your command."
+            ) from e
+
+        self._credentials, _ = google.auth.default(scopes=[GOOGLE_CLOUD_PLATFORM_SCOPE])
+        self._request = GoogleAuthRequest()
+
+    def get_headers(self) -> dict[str, str]:
+        self._ensure_credentials()
+        if self._credentials is None or self._request is None:
+            raise RuntimeError("Unable to initialize Google ADC credentials.")
+
+        if not self._credentials.valid or self._credentials.expired or not self._credentials.token:
+            self._credentials.refresh(self._request)
+
+        token = self._credentials.token
+        if not token:
+            raise RuntimeError("Unable to obtain an access token from Application Default Credentials.")
+        return {"Authorization": f"Bearer {token}"}
+
+
+def is_google_healthcare_url(url: str) -> bool:
+    hostname = (urlparse(url).hostname or "").lower()
+    return hostname.endswith("healthcare.googleapis.com")
+
+
+def get_auth_headers_for_url(url: str, google_auth: Optional[GoogleADCAuth] = None) -> dict[str, str]:
+    if not is_google_healthcare_url(url):
+        return {}
+    auth = google_auth or GoogleADCAuth()
+    return auth.get_headers()
 
 
 def ensure_our_directory() -> str:
@@ -258,6 +307,7 @@ class GraphDefinitionRunner(ResourceDB):
         self.max_requests = 10
         self.debug = debug
         self.recurse_count = 0
+        self._google_auth = GoogleADCAuth()
 
     async def fetch_graph_definition(self, graph_definition_id: str) -> Any:
         """
@@ -271,7 +321,7 @@ class GraphDefinitionRunner(ResourceDB):
         """
         async with httpx.AsyncClient() as client:
             url = f"{self.fhir_base_url}/GraphDefinition/{graph_definition_id}"
-            response = await client.get(url)
+            response = await client.get(url, headers=get_auth_headers_for_url(url, self._google_auth))
             response.raise_for_status()
             return response.json()
 
@@ -295,7 +345,11 @@ class GraphDefinitionRunner(ResourceDB):
                 try:
                     if self.debug:
                         print(f"Querying: {query_url}")
-                    response = await client.get(query_url, timeout=300)
+                    response = await client.get(
+                        query_url,
+                        timeout=300,
+                        headers=get_auth_headers_for_url(query_url, self._google_auth),
+                    )
                     response.raise_for_status()
                     page_count += 1
                     query_result = response.json()
@@ -349,9 +403,23 @@ class GraphDefinitionRunner(ResourceDB):
                             logging.warning(f"RemoteProtocolError: {e} sleeping for 5 seconds. Retry: {retry}")
                         await asyncio.sleep(5)
                         retry += 1
+                    elif err.response.status_code == 401:
+                        msg = (
+                            f"Authentication error (401 Unauthorized) for url: {query_url}. "
+                            "Your credentials have expired or are missing. "
+                            "Please re-authenticate (e.g. run 'gcloud auth application-default login') and verify your "
+                            "identity has IAM access to the target FHIR store."
+                        )
+                        logging.error(msg)
+                        if spinner:
+                            spinner.fail(msg)
+                        raise RuntimeError(msg) from e
                     else:
+                        msg = f"HTTP {err.response.status_code} error for url: {query_url} - {e}"
+                        logging.warning(msg)
+                        if spinner:
+                            spinner.fail(msg)
                         retry = max_retry
-                        logging.warning(f"RemoteProtocolError: {e} abandoning thread for url {query_url}")
 
         return []
 

@@ -13,7 +13,7 @@ with open('README.md', 'r') as f:
 
 setup(
     name="fhir_aggregator_client",
-    version="0.2.2",
+    # version is derived from git tags by setuptools-scm (see pyproject.toml)
     packages=find_packages(exclude=['ez_setup', 'tests', 'tests.*']),
     install_requires=parse_requirements("requirements.txt"),
     long_description=long_description,
@@ -23,6 +23,8 @@ setup(
     url='https://github.com/FHIR-Aggregator/fhir-aggregator-client.git',
     extras_require={
         'dtale': ['dtale'],
+        # Tools for running notebooks/ (install with: pip install -e ".[notebook]")
+        'notebook': ['jupyterlab>=4.0', 'ipykernel>=6.0'],
     },
     entry_points={
         "console_scripts": [
